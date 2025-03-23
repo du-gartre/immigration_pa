@@ -223,8 +223,18 @@ df_cchs_1718_1 <- df_cchs_1718_1 %>%
 df_cchs_1718_1 %>% 
   count(CCC_195, CCC_200, disorder, name = "count")
 
-## 05.02 Exposure variable -------------------------------------------------
 
+
+## 05.02 Exposure variable --------------------------------------------------
+
+# Define dummy variable denoting individuals achieving the level of Physical 
+# Activity recommended by Canadian Physical activity guidelines
+df_cchs_1718_1 <- df_cchs_1718_1 %>%
+  mutate(PA = factor(x = PAADVACV, 
+                     levels = c(2, 1),
+                     labels = c(0, 1)))
+
+## 05.02 Interaction variable ----------------------------------------------
 
 df_cchs_1718_1 <- df_cchs_1718_1 %>% 
   mutate(immigrant_new = case_when(SDCDGRES == 1 ~ "0_to_9_years",
@@ -235,6 +245,12 @@ df_cchs_1718_1 <- df_cchs_1718_1 %>%
 
 df_cchs_1718_1$immigrant_new
 table(df_cchs_1718_1$immigrant_new)
+
+
+# Alternative exposure variable
+df_cchs_1718_1 <- df_cchs_1718_1 %>% 
+  mutate(immigrant_10y = case_when(SDCDGRES == 1 ~ 0,
+                                   SDCDGRES == 2 ~ 1))
 
 ## 05.03 Covariates --------------------------------------------------------
 
@@ -251,9 +267,6 @@ df_cchs_1718_1 <- df_cchs_1718_1 %>%
   mutate(household_inc_cat = case_when(INCDGHH %in% 1:3 ~ "[0,60)",
                                        INCDGHH %in% 4   ~ "[60,80)",
                                        INCDGHH %in% 5   ~ "[80,Inf)"))
-  
-
-
 
 # 06 Add categories to variables ------------------------------------------
 
@@ -277,6 +290,10 @@ df_cchs_1718_2 <- df_cchs_1718_1 %>%
   mutate(immigrant = factor(x = SDCDVIMM,
                             levels = c(2, 1),
                             labels = c("non-immigrant", "immigrant")))
+
+
+# Define "weak" as the reference category in sense of belonging
+df_cchs_1718_2$sense_belong <- relevel(df_cchs_1718_2$sense_belong, ref = "weak")
 
 
 
