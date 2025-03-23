@@ -16,8 +16,8 @@
 #*                The exposure variable is physical activity.
 #*                - Define the threshold of the physical activity to use
 #* 
-#* Creation date: February 02 2025
-#* Author: author_name
+#* Creation date: March 22 2025
+#* Author: David U. Garibay Treviño, M.Sc.
 
 # 01 Initial Setup --------------------------------------------------------
 

@@ -4,8 +4,8 @@
 #*                in the Canadian Comunity Health Survey (2017-2018) to check 
 #*                for research questions
 #* 
-#* Creation date: January 12 2025
-#* Author: David U. Garibay-Treviño
+#* Creation date: March 22 2025
+#* Author: David U. Garibay Treviño, M.Sc.
 
 # 01 Initial Setup --------------------------------------------------------
 

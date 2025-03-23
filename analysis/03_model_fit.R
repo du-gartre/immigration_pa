@@ -1,16 +1,11 @@
 #* Title: 03_get_tables
 #* 
 #* Code function: This script uses the data generated in `02_data_wrangling.R`
-#*                to generate the following 2 tables:
-#*                - *Table 1*: Prevalence of outcome according to risk factors
-#*                - *Table 2*: Stratified analysis (Compute a separate estimate from each stratum)
+#*                And performs multiple evaluations to the data.
 #*                
-#*                For *Table 1* a cross tabulation will be made to identify 
-#*                the disease prevalence by risk factors. 
+#*                At the end of the code, logistic and a log-binomial 
+#*                regressions are implemented considering the survey weights.
 #*                
-#*                For *Table 2* 
-#*                
-#* 
 #* Creation date: March 22th 2025
 #* Author: David U. Garibay Treviño, M.Sc.
 
@@ -305,6 +300,8 @@ round(l_interaction_summary$dframe, 2)
 # 06 Run regression ----------------------------------------------------------
 
 
+#* *To do*
+#* - implement survey weights
 
 ## 06.01 Logistic ----------------------------------------------------------
 
