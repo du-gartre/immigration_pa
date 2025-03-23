@@ -47,3 +47,9 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Assignments folder
+Assignments/*
+
+# MAC OS temp files
+.DS_Store
