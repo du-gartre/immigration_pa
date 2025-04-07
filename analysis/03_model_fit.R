@@ -28,7 +28,6 @@ library(interactionR)
 # 02 Load data ------------------------------------------------------------
 
 df_cchs_1718_prep <- readRDS(file = "data/df_cchs_1718_prepared.rds")
-
 df_cchs_1718_prep$sense_belong
 
 
@@ -36,14 +35,22 @@ df_cchs_1718_prep$sense_belong
 #* Canada, however, it also presents more NA's than the `immigrant` variable
 
 
-# Add NA as a category (use to perform Sensitivity analysis on missing data)
-df_cchs_1718_prep$PA                <- forcats::fct_na_value_to_level(df_cchs_1718_prep$PA)
-df_cchs_1718_prep$immigrant_new     <- forcats::fct_na_value_to_level(df_cchs_1718_prep$immigrant_new)
-df_cchs_1718_prep$immigrant_10y     <- forcats::fct_na_value_to_level(df_cchs_1718_prep$immigrant_new)
-df_cchs_1718_prep$sex_cat           <- forcats::fct_na_value_to_level(df_cchs_1718_prep$sex_cat)
-df_cchs_1718_prep$age_cat           <- forcats::fct_na_value_to_level(df_cchs_1718_prep$age_cat)
-df_cchs_1718_prep$sense_belong      <- forcats::fct_na_value_to_level(df_cchs_1718_prep$sense_belong)
-df_cchs_1718_prep$household_inc_cat <- forcats::fct_na_value_to_level(df_cchs_1718_prep$household_inc_cat)
+# include NAs as a category?
+include_NA <- FALSE
+
+
+if (include_NA == TRUE) {
+  
+  # Add NA as a category (use to perform Sensitivity analysis on missing data)
+  df_cchs_1718_prep$PA                <- forcats::fct_na_value_to_level(df_cchs_1718_prep$PA)
+  df_cchs_1718_prep$immigrant_new     <- forcats::fct_na_value_to_level(df_cchs_1718_prep$immigrant_new)
+  df_cchs_1718_prep$immigrant_10y     <- forcats::fct_na_value_to_level(df_cchs_1718_prep$immigrant_new)
+  df_cchs_1718_prep$sex_cat           <- forcats::fct_na_value_to_level(df_cchs_1718_prep$sex_cat)
+  df_cchs_1718_prep$age_cat           <- forcats::fct_na_value_to_level(df_cchs_1718_prep$age_cat)
+  df_cchs_1718_prep$sense_belong      <- forcats::fct_na_value_to_level(df_cchs_1718_prep$sense_belong)
+  df_cchs_1718_prep$household_inc_cat <- forcats::fct_na_value_to_level(df_cchs_1718_prep$household_inc_cat)
+}
+
 
 
 # 03 Table time!! ---------------------------------------------------------
