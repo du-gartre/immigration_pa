@@ -644,11 +644,64 @@ odds.ratio(fit_logbinom)
 
 
 
+### 06.02.02 Poisson ------------------------------------------------------
+
+#* Without weights
+fit_pois_rec <- glm(formula = disorder ~ immigrant_10y*PA_rec + sex_cat + age_cat + sense_belong + household_inc_cat,
+                data = df_cchs_1718_prep,
+                family = poisson)
+
+exp(summary(fit_pois_rec)$coefficients[,1:2])
+exp(confint(fit_pois_rec))
+exp(coef(fit_pois_rec))
+
+warning("the single PA1 and immigrant variables are missing in publish()")
+Publish::publish(object = fit_pois_rec)
+
+
+#* With *weights*
+fit_pois_rec_w <- glm(formula = disorder ~ immigrant_10y + PA_rec + immigrant_10y:PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                  data = df_cchs_1718_prep,
+                  family = poisson(),
+                  weights = WTS_M)
+
+summary(fit_pois_rec_w)
+exp(summary(fit_pois_rec)$coefficients[,1:2])
+exp(confint(fit_pois_rec))
+exp(coef(fit_pois_rec_w))
+
+warning("the single PA1 and immigrant variables are missing in publish()")
+Publish::publish(fit_pois_rec_w)
+
+
+n_coef_rec       <- length(coef(fit_pois_rec_w))
+names_coef_rec   <- names(coef(fit_pois_rec_w))
+confint_coef_rec <- exp(confint(fit_pois_rec_w))
+se_coef_rec      <- summary(fit_pois_rec_w)$coefficients[,2]
+
+
+# Save data for plotting
+df_fit_pois_rec_w <- tibble(index = seq(n_coef_rec),
+                            name  = names_coef_rec,
+                            label = NA,
+                            HR    = exp(coef(fit_pois_rec_w)),
+                            se    = se_coef_rec,
+                            lb_95 = confint_coef_rec[, 1],
+                            ub_95 = confint_coef_rec[, 2])
+
 
 # 07 Plot results ---------------------------------------------------------
 
 
-
+v_labels <- c("Time since migration ( vs ≤10 years)",
+              "Physical Activity (≥ CPAG level vs < CPAG level)",
+              "Female vs male",
+              "Age (25-64 years vs 18-24 years)",
+              "Age (≥65 years vs 18-24 years)",
+              "Sense of belonging (Strong vs Weak)",
+              "Household income (60,000-80,000 vs <60,000)",
+              "Household income (≥80,000 vs <60,000)",
+              "Time since migration >10 years & PA ≥ CPAG level")
 
 # 07.03 Weighted poisson --------------------------------------------------
 
@@ -656,15 +709,7 @@ odds.ratio(fit_logbinom)
 df_plot_pois_w <- df_fit_pois_w %>% 
   filter(name != "(Intercept)") %>% 
   mutate(index = seq(nrow(.))) %>% 
-  mutate(label2 = c("Time since migration ( vs ≤10 years)",
-                    "Physical Activity (≥ CPAG level vs < CPAG level)",
-                    "Female vs male",
-                    "Age (25-64 years vs 18-24 years)",
-                    "Age (≥65 years vs 18-24 years)",
-                    "Sense of belonging (Strong vs Weak)",
-                    "Household income (60,000-80,000 vs <60,000)",
-                    "Household income (≥80,000 vs <60,000)",
-                    "Time since migration >10 years & PA ≥ CPAG level"))
+  mutate(label2 = v_labels)
 
 
 plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
@@ -698,6 +743,55 @@ plt_plot_pois_w
 
 ggsave(plot = plt_plot_pois_w,
        filename = "figs/plt_plot_pois_w.png",
+       width = 12,
+       height = 6)
+
+
+
+
+
+
+
+# recreative --------------------------------------------------------------
+
+
+df_plot_pois_rec_w <- df_fit_pois_rec_w %>% 
+  filter(name != "(Intercept)") %>% 
+  mutate(index = seq(nrow(.))) %>% 
+  mutate(label2 = v_labels)
+
+
+plt_plot_pois_rec_w <- ggplot(data = df_plot_pois_rec_w,
+                          mapping = aes(y = index,
+                                        x = HR,
+                                        xmin = lb_95,
+                                        xmax = ub_95)) + 
+  theme_bw(base_size = 16) + 
+  geom_point(shape = 18, size = 2) +
+  geom_errorbarh(height = 0.55) +
+  geom_vline(xintercept = 1, 
+             linetype = "dashed") +
+  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_y_continuous(name = NULL, 
+                     breaks = 1:nrow(df_plot_pois_w), 
+                     labels = df_plot_pois_w$label2, 
+                     trans = "reverse") +
+  labs(x = "Hazard Ratio (95% CI)") + 
+  theme(panel.border = element_blank(),
+        panel.background = element_blank(),
+        # panel.grid.major = element_blank(),
+        # panel.grid.minor = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text.y = element_text(colour = "black"),
+        axis.text.x.bottom = element_text(colour = "black"))
+
+plt_plot_pois_rec_w
+
+
+ggsave(plot = plt_plot_pois_rec_w,
+       filename = "figs/plt_plot_pois_recreative_w.png",
        width = 12,
        height = 6)
 
