@@ -249,13 +249,9 @@ df_cchs_1718_1 <- df_cchs_1718_1 %>%
   mutate(PA_rec =  if_else(condition = PAADVREC >= 150,
                            true      = 1,
                            false     = 0,
-                           missing   = NA))
+                           missing   = NA)) %>% 
+  mutate(PA_rec = factor(x = PA_rec))
 
-table(df_cchs_1718_1$PA_rec)
-prop.table(table(df_cchs_1718_1$PA_rec))
-
-table(df_cchs_1718_1$PA)
-prop.table(table(df_cchs_1718_1$PA))
 
 ## 05.02 Interaction variable ----------------------------------------------
 
