@@ -656,7 +656,7 @@ odds.ratio(fit_logbinom)
 df_plot_pois_w <- df_fit_pois_w %>% 
   filter(name != "(Intercept)") %>% 
   mutate(index = seq(nrow(.))) %>% 
-  mutate(label2 = c("Time since migration (>10 years vs ≤10 years)",
+  mutate(label2 = c("Time since migration ( vs ≤10 years)",
                     "Physical Activity (≥ CPAG level vs < CPAG level)",
                     "Female vs male",
                     "Age (25-64 years vs 18-24 years)",
@@ -664,8 +664,7 @@ df_plot_pois_w <- df_fit_pois_w %>%
                     "Sense of belonging (Strong vs Weak)",
                     "Household income (60,000-80,000 vs <60,000)",
                     "Household income (≥80,000 vs <60,000)",
-                    "Interaction term (Time since migration x Physical activity)")
-         )
+                    "Time since migration >10 years & PA ≥ CPAG level"))
 
 
 plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
@@ -699,7 +698,7 @@ plt_plot_pois_w
 
 ggsave(plot = plt_plot_pois_w,
        filename = "figs/plt_plot_pois_w.png",
-       width = 10,
+       width = 12,
        height = 6)
 
 
