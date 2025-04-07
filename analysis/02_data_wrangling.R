@@ -142,6 +142,7 @@ v_desired_variables <- c("ADM_RNO",  #* Sequential record number
                          "HWTDGBMI", #* BMI, self reported
                          "HWTDGCOR", #* BMI, adjusted
                          "PAADVMVA", #* Total minutes - moderate to vigorous physical activities - 7 d - (D)
+                         "PAADVREC", #* Total number of minutes of *recreational* physical activities - last 7 days
                          "PAADVACV", #* Physical activity indicator - (D) [according to the Canadian Physical Activity Guidelines: have ≥ 150 min of moderate to vigorous intensity aerobic physical activities per week]
                          "PAADVAC2", #* *Alternate* Physical activity indicator - (D)
                          "PAADVVIG", #* Total number of minutes a respondent engaged in vigorous physical activities in the last 7 days.
@@ -227,12 +228,34 @@ df_cchs_1718_1 %>%
 
 ## 05.02 Exposure variable --------------------------------------------------
 
-# Define dummy variable denoting individuals achieving the level of Physical 
-# Activity recommended by Canadian Physical activity guidelines
+#* Main exposure variable
+#* 
+#* Define dummy variable denoting individuals achieving the level of Physical 
+#* Activity recommended by Canadian Physical activity guidelines
 df_cchs_1718_1 <- df_cchs_1718_1 %>%
   mutate(PA = factor(x = PAADVACV, 
                      levels = c(2, 1),
                      labels = c(0, 1)))
+
+
+
+
+#* *Alternate* exposure variable
+#* 
+#* Add variable indicating if the individual spent at least 150 min in the 
+#* last week in *recreational* Physical activities.
+
+df_cchs_1718_1 <- df_cchs_1718_1 %>%
+  mutate(PA_rec =  if_else(condition = PAADVREC >= 150,
+                           true      = 1,
+                           false     = 0,
+                           missing   = NA))
+
+table(df_cchs_1718_1$PA_rec)
+prop.table(table(df_cchs_1718_1$PA_rec))
+
+table(df_cchs_1718_1$PA)
+prop.table(table(df_cchs_1718_1$PA))
 
 ## 05.02 Interaction variable ----------------------------------------------
 
@@ -319,10 +342,12 @@ a <- sum(table(df_cchs_1718_2$PAADVACV))
 b <- sum(table(df_cchs_1718_2$disorder))
 c <- sum(table(df_cchs_1718_2$PAADVACV, df_cchs_1718_1$disorder))
 
+
 # All of them must return TRUE
-a == b
-a == c
-b == c
+stopifnot(a == b,
+          a == c,
+          b == c)
+
 
 saveRDS(object = df_cchs_1718_2, 
         file = "data/df_cchs_1718_prepared.rds")
