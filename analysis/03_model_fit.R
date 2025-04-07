@@ -24,11 +24,11 @@ library(gmodels)
 library(questionr)
 library(forcats)
 library(interactionR)
+library(weights)
 
 # 02 Load data ------------------------------------------------------------
 
 df_cchs_1718_prep <- readRDS(file = "data/df_cchs_1718_prepared.rds")
-df_cchs_1718_prep$sense_belong
 
 
 #* *Note* the `immigrant_new` variable disaggregates by the length of stay in 
@@ -64,13 +64,7 @@ df_cchs_1718_prep %>%
   mutate(pop = sum(n)) %>% 
   mutate(prev = round(n/pop, 4)*100)
 
-
-
 ## 03.02 Disorder prevalence by immigration status --------------------------
-
-
-df_cchs_1718_prep %>% 
-  count(immigrant)
 
 df_cchs_1718_prep %>% 
   count(immigrant, disorder) %>% 
@@ -84,15 +78,19 @@ df_cchs_1718_prep %>%
 
 ## 03.03 Table 1 --------------------------------------------------------------
 
-
-
-# > sum(table(df_cchs_1718_prep$sex_cat))
-# [1] 12920
-
-# Physical Activity
+#* Physical Activity - *main exposure*
 df_t1_PA <- df_cchs_1718_prep %>% 
   count(PA, disorder) %>% 
   group_by(PA) %>% 
+  mutate(sex_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sex_pop, 4)*100)
+# filter(disorder == 1)
+
+#* Physical Activity - *alternate exposure* - recreative PA
+df_t1_PA_rec <- df_cchs_1718_prep %>% 
+  count(PA_rec, disorder) %>% 
+  group_by(PA_rec) %>% 
   mutate(sex_pop = sum(n)) %>% 
   ungroup() %>% 
   mutate(prev = round(n/sex_pop, 4)*100)
@@ -169,6 +167,10 @@ df_t2 <- df_cchs_1718_prep %>%
 
 # 04 Stratified analysis --------------------------------------------------
 
+
+
+## 04.01 unweighted logistic -----------------------------------------------
+
 # General risk of developing Mood or anxiety disorder
 model_1 <- glm(formula = disorder ~ 1,
                data = df_cchs_1718_prep,
@@ -225,73 +227,184 @@ round(odds.ratio(model_6), 2)
 
 
 
+## 04.02 Weighted poisson --------------------------------------------------
 
-# 04 Crude estimate for an association ------------------------------------
+# General risk of developing Mood or anxiety disorder
+model_1_w_pois <- glm(formula = disorder ~ 1,
+                      data = df_cchs_1718_prep,
+                      family = poisson(),
+                      weights = WTS_M)
+
+exp(coef(model_1_w_pois))
+round(exp(confint(model_1_w_pois)), 2)
+
+
+# Crude risk of developing Mood or anxiety disorder by Physical activity
+model_2_w_pois <- glm(formula = disorder ~ PA,
+                      data = df_cchs_1718_prep,
+                      family = poisson(),
+                      weights = WTS_M)
+
+Publish::publish(model_2_w_pois)
+
+# Crude risk of developing Mood or anxiety disorder by Time since migration
+model_3_w_pois <- glm(formula = disorder ~ immigrant_new,
+                      data = df_cchs_1718_prep,
+                      family = poisson(),
+                      weights = WTS_M)
+
+Publish::publish(model_3_w_pois)
+
+# Crude risk of developing mood or anxiety disorder by sex
+model_4_w_pois <- glm(formula = disorder ~ sex_cat,
+               data = df_cchs_1718_prep,
+               family = poisson(),
+               weights = WTS_M)
+
+Publish::publish(model_4_w_pois)
+
+# Crude risk of developing mood or anxiety disorder by age
+model_5_w_pois <- glm(formula = disorder ~ age_cat,
+               data = df_cchs_1718_prep,
+               family = poisson(),
+               weights = WTS_M)
+
+Publish::publish(model_5_w_pois)
+
+# Crude risk of developing mood or anxiety disorder by sense of belonging
+model_6_w_pois <- glm(formula = disorder ~ sense_belong,
+               data = df_cchs_1718_prep,
+               family = poisson(),
+               weights = WTS_M)
+
+Publish::publish(model_6_w_pois)
+
+# Crude risk of developing mood or anxiety disorder by total household income
+model_7_w_pois <- glm(formula = disorder ~ household_inc_cat,
+               data = df_cchs_1718_prep,
+               family = poisson(),
+               weights = WTS_M)
+
+Publish::publish(model_7_w_pois)
+
+
+# 04 Test for an association ----------------------------------------------
+
+
+
+## 04.01 Unweighted --------------------------------------------------------
+
 
 #* Here I have to develop a Chi-squared test
 CrossTable(x = df_cchs_1718_prep$PA,
            y = df_cchs_1718_prep$disorder,
            chisq = T)
 
-
-## 04.01 Stratified test ---------------------------------------------------
-
-# # Test for non-immigrants
-# df_cchs_1718_nm <- df_cchs_1718_prep %>% 
-#   filter(immigrant == "non-immigrant")
-# 
-# CrossTable(x = df_cchs_1718_nm$PA,
-#            y = df_cchs_1718_nm$disorder,
-#            chisq = T)
-
-# Test for immigrants
-df_cchs_1718_im <- df_cchs_1718_prep %>% 
-  filter(immigrant == "immigrant")
-
-CrossTable(x = df_cchs_1718_im$PA,
-           y = df_cchs_1718_im$disorder,
+#* Here I have to develop a Chi-squared test
+#* *alternate* exposure - recreative PA
+CrossTable(x = df_cchs_1718_prep$PA_rec,
+           y = df_cchs_1718_prep$disorder,
            chisq = T)
 
 
-# # Test for non-immigrants
-# df_cchs_1718_nm <- df_cchs_1718_prep %>% 
-#   filter(immigrant == "non-immigrant")
-# 
-# CrossTable(x = df_cchs_1718_nm$PA,
-#            y = df_cchs_1718_nm$disorder,
-#            chisq = T)
 
-# Test for immigrants
-df_cchs_1718_im <- df_cchs_1718_prep %>% 
-  filter(immigrant == "immigrant")
+## 04.02 Weighted ----------------------------------------------------------
 
-CrossTable(x = df_cchs_1718_im$PA,
-           y = df_cchs_1718_im$disorder,
-           chisq = T)
-
-
+weights::wtd.chi.sq(var1 = df_cchs_1718_prep$PA,
+                    var2 = df_cchs_1718_prep$disorder,
+                    weight = df_cchs_1718_prep$WTS_M)
 
 
 
 # 05 Test for interaction -------------------------------------------------
 
 
-# Adjust model
+#* Adjust model - *main exposure*
 fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
                        data = df_cchs_1718_prep,
                        family = binomial(link = "logit"))
 
 summary(fit_interaction)
 
+
 l_interaction_summary <- interactionR::interactionR(
   fit_interaction,
   exposure_names = c("immigrant_10y", "PA"),
   ci.type = "delta", 
   ci.level = 0.95,
-  em = FALSE, 
-  recode = FALSE)
+  em = FALSE,
+  recode = TRUE)
 
 round(l_interaction_summary$dframe, 2)
+
+
+
+#* Adjust model - *alternate exposure*
+fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
+                           data = df_cchs_1718_prep,
+                           family = binomial(link = "logit"))
+
+summary(fit_interaction_alt)
+
+l_interaction_summary <- interactionR::interactionR(
+  model = fit_interaction_alt,
+  exposure_names = c("immigrant_10y", "PA_rec"),
+  ci.type = "delta", 
+  ci.level = 0.95,
+  em = FALSE,
+  recode = TRUE)
+
+round(l_interaction_summary$dframe, 2)
+
+
+
+## 05.02 Weights -----------------------------------------------------------
+
+
+
+
+#* Adjust model - *main exposure*
+fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
+                       data = df_cchs_1718_prep,
+                       family = quasibinomial(link = "log"),
+                       # family = quasibinomial(link = "logit"),
+                       weights = WTS_M)
+
+summary(fit_interaction)
+
+fit_interaction$converged
+Publish::publish(fit_interaction)
+
+
+
+l_interaction_summary <- interactionR::interactionR(
+  fit_interaction,
+  exposure_names = c("immigrant_10y", "PA"),
+  ci.type = "delta", 
+  ci.level = 0.95,
+  em = FALSE,
+  recode = TRUE)
+
+round(l_interaction_summary$dframe, 2)
+
+
+#* Adjust model - *alternate exposure*
+fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
+                           data = df_cchs_1718_prep,
+                           family = binomial(link = "logit"))
+
+summary(fit_interaction_alt)
+
+l_interaction_summary <- interactionR::interactionR(
+  model = fit_interaction_alt,
+  exposure_names = c("immigrant_10y", "PA_rec"),
+  ci.type = "delta", 
+  ci.level = 0.95,
+  em = FALSE,
+  recode = TRUE)
+
+round(l_interaction_summary$dframe, 2)
+
 
 
 # 06 Run regression ----------------------------------------------------------
@@ -300,52 +413,113 @@ round(l_interaction_summary$dframe, 2)
 #* *To do*
 #* - implement survey weights
 
-## 06.01 Logistic ----------------------------------------------------------
 
+
+## 06.01 Main exposure - PA ------------------------------------------------
+
+### 06.01.02 Logistic ----------------------------------------------------------
+
+#* Without weights
 fit_logistic <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
-               data = df_cchs_1718_prep,
-               family = binomial())
+                    data = df_cchs_1718_prep,
+                    family = binomial(link = "logit"))
 
 summary(fit_logistic)
 questionr::odds.ratio(fit_logistic)
 
-# AIC(model_1, model_2)
-# 
-# 
-# questionr::odds.ratio(model_1)
-# 
-# names(exp(coef(model_1)))
-# round(exp(coef(model_1)), 2)
-# 
-# round(coef(model_1),digits =  2)
-# exp(coef(model_1))
-# 
-# round(x = exp(confint(model_1)), digits = 2)
-# 
-# pander(model_1)
-# 
-# 
-# ??odds.ratio()
+
+#* With *weights*
+fit_logistic_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                      data = df_cchs_1718_prep,
+                      # family = binomial(link = "logit"),
+                      family = quasibinomial(link = "logit"),
+                      weights = WTS_M)
+
+
+summary(fit_logistic_w)
+questionr::odds.ratio(fit_logistic_w)
+
+
+### 06.01.02 Log-binomial ------------------------------------------------------
+
+#* Without weights
+fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                    data = df_cchs_1718_prep,
+                    family = binomial(link = "log"))
+
+summary(fit_logbinom)
+odds.ratio(fit_logbinom)
+
+#* With *weights*
+fit_logbinom_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                      data = df_cchs_1718_prep,
+                      family = quasibinomial(link = "log"),
+                      weights = WTS_M)
+
+summary(fit_logbinom_w)
+odds.ratio(fit_logbinom_w)
+
+
+class(df_cchs_1718_prep$WTS_M )
+hist(df_cchs_1718_prep$WTS_M, breaks = 50)
+
+
+### 06.01.02 Poisson ------------------------------------------------------
+
+#* Without weights
+fit_pois <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                data = df_cchs_1718_prep,
+                family = poisson)
+
+summary(fit_pois)
+Publish::publish(fit_pois)
+
+
+#* With *weights*
+fit_pois_w <- glm(formula = disorder ~ immigrant_10y + PA + immigrant_10y:PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                  data = df_cchs_1718_prep,
+                  family = poisson(),
+                  weights = WTS_M)
+
+summary(fit_pois_w)
+Publish::publish(fit_pois_w)
+
+
+#* With *weights*
+fit_pois_w <- glm(formula = disorder ~  PA,
+                  data = df_cchs_1718_prep,
+                  family = poisson(),
+                  weights = WTS_M)
+
+summary(fit_pois_w)
+Publish::publish(fit_pois_w)
 
 
 
 
-## 06.02 Log-binomial ------------------------------------------------------
+## 06.02 Alternative exposure - PA_rec -------------------------------------
+
+
+### 06.01.02 Logistic ----------------------------------------------------------
+
+fit_logistic <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+                    data = df_cchs_1718_prep,
+                    family = binomial())
+
+df_cchs_1718_prep$wt
+
+summary(fit_logistic)
+questionr::odds.ratio(fit_logistic)
+
+
+### 06.01.02 Log-binomial ------------------------------------------------------
 
 fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
                     data = df_cchs_1718_prep,
                     family = binomial(link = "log"))
 
 summary(fit_logbinom)
+odds.ratio(fit_logbinom)
 
 
-v_lbinom_coef <- coef(fit_logbinom)
-df_lbinom_CI  <- confint(fit_logbinom)
 
-class(df_lbinom_CI)
-
-
-df_lbinom_res <- tibble(variable = names(v_lbinom_coef),
-                        coef     = exp(v_lbinom_coef),
-                        lb_95    = exp(df_lbinom_CI[, 1]),
-                        ub_95    = exp(df_lbinom_CI[, 2]))
