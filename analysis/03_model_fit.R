@@ -25,6 +25,7 @@ library(questionr)
 library(forcats)
 library(interactionR)
 library(weights)
+library(Publish)
 
 # 02 Load data ------------------------------------------------------------
 
@@ -59,15 +60,33 @@ if (include_NA == TRUE) {
 
 ## 03.01 Crude prevalence of the disorder -------------------------------------
 
+# Unweighted
 df_cchs_1718_prep %>% 
   count(disorder) %>% 
   mutate(pop = sum(n)) %>% 
   mutate(prev = round(n/pop, 4)*100)
 
+
+# Weighted
+df_cchs_1718_prep %>% 
+  count(disorder, wt = WTS_M) %>% 
+  mutate(pop = sum(n)) %>% 
+  mutate(prev = round(n/pop, 4)*100)
+
 ## 03.02 Disorder prevalence by immigration status --------------------------
 
+# Unweighted
 df_cchs_1718_prep %>% 
   count(immigrant, disorder) %>% 
+  group_by(immigrant) %>% 
+  mutate(pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/pop, 4)*100) %>% 
+  tidyr::drop_na()
+
+# Weighted
+df_cchs_1718_prep %>% 
+  count(immigrant, disorder, wt = WTS_M) %>% 
   group_by(immigrant) %>% 
   mutate(pop = sum(n)) %>% 
   ungroup() %>% 
@@ -77,6 +96,10 @@ df_cchs_1718_prep %>%
 
 
 ## 03.03 Table 1 --------------------------------------------------------------
+
+
+
+### 03.03.01 Unweighted -----------------------------------------------------
 
 #* Physical Activity - *main exposure*
 df_t1_PA <- df_cchs_1718_prep %>% 
@@ -142,10 +165,79 @@ df_t1_income <- df_cchs_1718_prep %>%
   mutate(prev = round(n/income_pop, 4)*100)
 # filter(disorder == 1)
 
+### 03.03.01 Weighted -------------------------------------------------------
+
+#* Physical Activity - *main exposure*
+df_t1_PA_w <- df_cchs_1718_prep %>% 
+  count(PA, disorder, wt = WTS_M) %>% 
+  group_by(PA) %>% 
+  mutate(sex_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sex_pop, 4)*100)
+# filter(disorder == 1)
+
+#* Physical Activity - *alternate exposure* - recreative PA
+df_t1_PA_rec_w <- df_cchs_1718_prep %>% 
+  count(PA_rec, disorder, wt = WTS_M) %>% 
+  group_by(PA_rec) %>% 
+  mutate(sex_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sex_pop, 4)*100)
+# filter(disorder == 1)
+
+
+# Time since migration
+df_t1_immigrant_w <- df_cchs_1718_prep %>% 
+  count(immigrant_new, disorder, wt = WTS_M) %>% 
+  group_by(immigrant_new) %>% 
+  mutate(sex_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sex_pop, 4)*100)
+# filter(disorder == 1)
+
+# Sex
+df_t1_sex_w <- df_cchs_1718_prep %>% 
+  count(sex_cat, disorder, wt = WTS_M) %>% 
+  group_by(sex_cat) %>% 
+  mutate(sex_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sex_pop, 4)*100)
+# filter(disorder == 1)
+
+# Age
+df_t1_age_w <- df_cchs_1718_prep %>% 
+  count(age_cat, disorder, wt = WTS_M) %>% 
+  group_by(age_cat) %>% 
+  mutate(age_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/age_pop, 4)*100)
+# filter(disorder == 1)
+
+# Sense of belonging
+df_t1_belonging_w <- df_cchs_1718_prep %>% 
+  count(sense_belong, disorder, wt = WTS_M) %>% 
+  group_by(sense_belong) %>% 
+  mutate(sense_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/sense_pop, 4)*100)
+# filter(disorder == 1)
+
+# Income
+df_t1_income_w <- df_cchs_1718_prep %>% 
+  count(household_inc_cat, disorder, wt = WTS_M) %>% 
+  group_by(household_inc_cat) %>% 
+  mutate(income_pop = sum(n)) %>% 
+  ungroup() %>% 
+  mutate(prev = round(n/income_pop, 4)*100)
+# filter(disorder == 1)
+
 
 
 ## 03.04 Table 2 -----------------------------------------------------------
 
+#* *Unweighted*
+
+# Calculate population by time since migration and PA
 df_cchs_1718_prep %>% 
   group_by(immigrant_new, PA) %>% 
   count()
@@ -153,6 +245,26 @@ df_cchs_1718_prep %>%
 # PA
 df_t2 <- df_cchs_1718_prep %>% 
   count(immigrant_new, PA, disorder) %>% 
+  group_by(immigrant_new, PA) %>% 
+  mutate(pop = sum(n)) %>% 
+  mutate(prev = round(n/pop, 4)*100) %>% 
+  ungroup() %>% 
+  filter(disorder == 1) %>%
+  group_by(immigrant_new) %>% 
+  # mutate(rate_rate = rate/lead(rate))
+  mutate(prev_ratio = prev/lag(prev))
+
+
+#* *Weighted*
+
+# Calculate population by time since migration and PA
+df_cchs_1718_prep %>% 
+  group_by(immigrant_new, PA) %>% 
+  count()
+
+# PA
+df_t2_w <- df_cchs_1718_prep %>% 
+  count(immigrant_new, PA, disorder, wt = WTS_M) %>% 
   group_by(immigrant_new, PA) %>% 
   mutate(pop = sum(n)) %>% 
   mutate(prev = round(n/pop, 4)*100) %>% 
@@ -325,6 +437,7 @@ fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
                        family = binomial(link = "logit"))
 
 summary(fit_interaction)
+coefficients(fit_interaction)[4]
 
 
 l_interaction_summary <- interactionR::interactionR(
@@ -361,9 +474,8 @@ round(l_interaction_summary$dframe, 2)
 ## 05.02 Weights -----------------------------------------------------------
 
 
-
-
 #* Adjust model - *main exposure*
+#* - log binomial
 fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
                        data = df_cchs_1718_prep,
                        family = quasibinomial(link = "log"),
@@ -371,11 +483,6 @@ fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
                        weights = WTS_M)
 
 summary(fit_interaction)
-
-fit_interaction$converged
-Publish::publish(fit_interaction)
-
-
 
 l_interaction_summary <- interactionR::interactionR(
   fit_interaction,
@@ -385,25 +492,25 @@ l_interaction_summary <- interactionR::interactionR(
   em = FALSE,
   recode = TRUE)
 
-round(l_interaction_summary$dframe, 2)
+l_interaction_summary$dframe
 
 
-#* Adjust model - *alternate exposure*
-fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
-                           data = df_cchs_1718_prep,
-                           family = binomial(link = "logit"))
-
-summary(fit_interaction_alt)
-
-l_interaction_summary <- interactionR::interactionR(
-  model = fit_interaction_alt,
-  exposure_names = c("immigrant_10y", "PA_rec"),
-  ci.type = "delta", 
-  ci.level = 0.95,
-  em = FALSE,
-  recode = TRUE)
-
-round(l_interaction_summary$dframe, 2)
+# #* Adjust model - *alternate exposure*
+# fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
+#                            data = df_cchs_1718_prep,
+#                            family = binomial(link = "logit"))
+# 
+# summary(fit_interaction_alt)
+# 
+# l_interaction_summary <- interactionR::interactionR(
+#   model = fit_interaction_alt,
+#   exposure_names = c("immigrant_10y", "PA_rec"),
+#   ci.type = "delta", 
+#   ci.level = 0.95,
+#   em = FALSE,
+#   recode = TRUE)
+# 
+# round(l_interaction_summary$dframe, 2)
 
 
 
@@ -426,7 +533,7 @@ fit_logistic <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + 
 
 summary(fit_logistic)
 questionr::odds.ratio(fit_logistic)
-
+Publish::publish(fit_logistic)
 
 #* With *weights*
 fit_logistic_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
@@ -448,6 +555,7 @@ fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + 
                     family = binomial(link = "log"))
 
 summary(fit_logbinom)
+publish(fit_logbinom)
 odds.ratio(fit_logbinom)
 
 #* With *weights*
@@ -472,7 +580,10 @@ fit_pois <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sens
                 family = poisson)
 
 summary(fit_pois)
-Publish::publish(fit_pois)
+exp(coef(fit_pois))
+
+warning("the single PA1 and immigrant variables are missing in publish()")
+Publish::publish(object = fit_pois)
 
 
 #* With *weights*
@@ -481,18 +592,28 @@ fit_pois_w <- glm(formula = disorder ~ immigrant_10y + PA + immigrant_10y:PA + s
                   family = poisson(),
                   weights = WTS_M)
 
+
 summary(fit_pois_w)
+exp(coef(fit_pois_w))
+
+warning("the single PA1 and immigrant variables are missing in publish()")
 Publish::publish(fit_pois_w)
 
 
-#* With *weights*
-fit_pois_w <- glm(formula = disorder ~  PA,
-                  data = df_cchs_1718_prep,
-                  family = poisson(),
-                  weights = WTS_M)
+n_coef       <- length(coef(fit_pois_w))
+names_coef   <- names(coef(fit_pois_w))
+confint_coef <- exp(confint(fit_pois_w))
+se_coef      <- summary(fit_pois_w)$coefficients[,2]
 
-summary(fit_pois_w)
-Publish::publish(fit_pois_w)
+
+# Save data for plotting
+df_fit_pois_w <- tibble(index = seq(n_coef),
+                        name  = names_coef,
+                        label = NA,
+                        HR    = exp(coef(fit_pois_w)),
+                        se    = se_coef,
+                        lb_95 = confint_coef[, 1],
+                        ub_95 = confint_coef[, 2])
 
 
 
@@ -521,5 +642,64 @@ fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + 
 summary(fit_logbinom)
 odds.ratio(fit_logbinom)
 
+
+
+
+# 07 Plot results ---------------------------------------------------------
+
+
+
+
+# 07.03 Weighted poisson --------------------------------------------------
+
+
+df_plot_pois_w <- df_fit_pois_w %>% 
+  filter(name != "(Intercept)") %>% 
+  mutate(index = seq(nrow(.))) %>% 
+  mutate(label2 = c("Time since migration (>10 years vs ≤10 years)",
+                    "Physical Activity (≥ CPAG level vs < CPAG level)",
+                    "Female vs male",
+                    "Age (25-64 years vs 18-24 years)",
+                    "Age (≥65 years vs 18-24 years)",
+                    "Sense of belonging (Strong vs Weak)",
+                    "Household income (60,000-80,000 vs <60,000)",
+                    "Household income (≥80,000 vs <60,000)",
+                    "Interaction term (Time since migration x Physical activity)")
+         )
+
+
+plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
+       mapping = aes(y = index,
+                     x = HR,
+                     xmin = lb_95,
+                     xmax = ub_95)) + 
+  theme_bw(base_size = 16) + 
+  geom_point(shape = 18, size = 2) +
+  geom_errorbarh(height = 0.55) +
+  geom_vline(xintercept = 1, 
+             linetype = "dashed") +
+  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_y_continuous(name = NULL, 
+                     breaks = 1:nrow(df_plot_pois_w), 
+                     labels = df_plot_pois_w$label2, 
+                     trans = "reverse") +
+  labs(x = "Hazard Ratio (95% CI)") + 
+  theme(panel.border = element_blank(),
+        panel.background = element_blank(),
+        # panel.grid.major = element_blank(),
+        # panel.grid.minor = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text.y = element_text(colour = "black"),
+        axis.text.x.bottom = element_text(colour = "black"))
+
+plt_plot_pois_w
+
+
+ggsave(plot = plt_plot_pois_w,
+       filename = "figs/plt_plot_pois_w.png",
+       width = 10,
+       height = 6)
 
 
