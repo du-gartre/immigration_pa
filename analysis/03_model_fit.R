@@ -65,16 +65,6 @@ df_cchs_1718_prep %>%
   mutate(prev = round(n/pop, 4)*100)
 
 
-v_crude_prev_values <- table(df_cchs_1718_prep$disorder, useNA = "ifany")
-v_crude_prev_prop   <- prop.table(table(df_cchs_1718_prep$disorder, useNA = "ifany"))
-
-
-
-data.frame(condition = c("None", "Mood or anxiety disorder"),
-           count      = as.numeric(v_crude_prev_values),
-           proportion = round(as.numeric(v_crude_prev_prop), 4)*100)
-
-
 
 ## 03.02 Disorder prevalence by immigration status --------------------------
 
