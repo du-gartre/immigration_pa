@@ -26,6 +26,7 @@ library(forcats)
 library(interactionR)
 library(weights)
 library(Publish)
+library(sandwich)
 
 # 02 Load data ------------------------------------------------------------
 
@@ -437,37 +438,35 @@ fit_interaction <- glm(formula = disorder ~ immigrant_10y*PA,
                        family = binomial(link = "logit"))
 
 summary(fit_interaction)
-coefficients(fit_interaction)[4]
 
 
 l_interaction_summary <- interactionR::interactionR(
-  fit_interaction,
+  model = fit_interaction,
   exposure_names = c("immigrant_10y", "PA"),
   ci.type = "delta", 
   ci.level = 0.95,
-  em = FALSE,
-  recode = TRUE)
+  em = FALSE)
 
-round(l_interaction_summary$dframe, 2)
-
+l_interaction_summary$dframe
 
 
-#* Adjust model - *alternate exposure*
-fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
-                           data = df_cchs_1718_prep,
-                           family = binomial(link = "logit"))
 
-summary(fit_interaction_alt)
-
-l_interaction_summary <- interactionR::interactionR(
-  model = fit_interaction_alt,
-  exposure_names = c("immigrant_10y", "PA_rec"),
-  ci.type = "delta", 
-  ci.level = 0.95,
-  em = FALSE,
-  recode = TRUE)
-
-round(l_interaction_summary$dframe, 2)
+# #* Adjust model - *alternate exposure*
+# fit_interaction_alt <- glm(formula = disorder ~ immigrant_10y*PA_rec,
+#                            data = df_cchs_1718_prep,
+#                            family = binomial(link = "logit"))
+# 
+# summary(fit_interaction_alt)
+# 
+# l_interaction_summary <- interactionR::interactionR(
+#   model = fit_interaction_alt,
+#   exposure_names = c("immigrant_10y", "PA_rec"),
+#   ci.type = "delta", 
+#   ci.level = 0.95,
+#   em = FALSE,
+#   recode = TRUE)
+# 
+# l_interaction_summary$dframe
 
 
 
@@ -536,15 +535,16 @@ questionr::odds.ratio(fit_logistic)
 Publish::publish(fit_logistic)
 
 #* With *weights*
-fit_logistic_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
-                      data = df_cchs_1718_prep,
-                      # family = binomial(link = "logit"),
-                      family = quasibinomial(link = "logit"),
-                      weights = WTS_M)
-
-
-summary(fit_logistic_w)
-questionr::odds.ratio(fit_logistic_w)
+#* - does *not converge* when including NAs
+# fit_logistic_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+#                       data = df_cchs_1718_prep,
+#                       # family = binomial(link = "logit"),
+#                       family = quasibinomial(link = "logit"),
+#                       weights = WTS_M)
+# 
+# 
+# summary(fit_logistic_w)
+# questionr::odds.ratio(fit_logistic_w)
 
 
 ### 06.01.02 Log-binomial ------------------------------------------------------
@@ -552,27 +552,30 @@ questionr::odds.ratio(fit_logistic_w)
 #* Without weights
 fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
                     data = df_cchs_1718_prep,
-                    family = binomial(link = "log"))
+                    family = binomial(link = "log")
+                    )
 
 summary(fit_logbinom)
 publish(fit_logbinom)
 odds.ratio(fit_logbinom)
 
 #* With *weights*
-fit_logbinom_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
-                      data = df_cchs_1718_prep,
-                      family = quasibinomial(link = "log"),
-                      weights = WTS_M)
-
-summary(fit_logbinom_w)
-odds.ratio(fit_logbinom_w)
-
-
-class(df_cchs_1718_prep$WTS_M )
-hist(df_cchs_1718_prep$WTS_M, breaks = 50)
+# fit_logbinom_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+#                       data = df_cchs_1718_prep,
+#                       family = quasibinomial(link = "log"),
+#                       weights = WTS_M)
+# 
+# summary(fit_logbinom_w)
+# odds.ratio(fit_logbinom_w)
+# 
+# 
+# class(df_cchs_1718_prep$WTS_M )
+# hist(df_cchs_1718_prep$WTS_M, breaks = 50)
 
 
 ### 06.01.02 Poisson ------------------------------------------------------
+
+
 
 #* Without weights
 fit_pois <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
@@ -596,9 +599,15 @@ fit_pois_w <- glm(formula = disorder ~ immigrant_10y + PA + immigrant_10y:PA + s
 summary(fit_pois_w)
 exp(coef(fit_pois_w))
 
+# Get robust Standard errors and CI
+cov_fit_pois_w <- vcovHC(fit_pois_w)
+se_fit_pois_w  <- sqrt(diag(cov_fit_pois_w))
+
+lb_fit_pois_w <- exp(coef(fit_pois_w) - 1.96 * se_fit_pois_w)
+ub_fit_pois_w <- exp(coef(fit_pois_w) + 1.96 * se_fit_pois_w)
+
 warning("the single PA1 and immigrant variables are missing in publish()")
 Publish::publish(fit_pois_w)
-
 
 n_coef       <- length(coef(fit_pois_w))
 names_coef   <- names(coef(fit_pois_w))
@@ -612,8 +621,8 @@ df_fit_pois_w <- tibble(index = seq(n_coef),
                         label = NA,
                         HR    = exp(coef(fit_pois_w)),
                         se    = se_coef,
-                        lb_95 = confint_coef[, 1],
-                        ub_95 = confint_coef[, 2])
+                        lb_95 = lb_fit_pois_w,
+                        ub_95 = ub_fit_pois_w)
 
 
 
@@ -627,10 +636,9 @@ fit_logistic <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + 
                     data = df_cchs_1718_prep,
                     family = binomial())
 
-df_cchs_1718_prep$wt
 
 summary(fit_logistic)
-questionr::odds.ratio(fit_logistic)
+publish(fit_logistic)
 
 
 ### 06.01.02 Log-binomial ------------------------------------------------------
@@ -640,7 +648,7 @@ fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + 
                     family = binomial(link = "log"))
 
 summary(fit_logbinom)
-odds.ratio(fit_logbinom)
+publish(fit_logbinom)
 
 
 
@@ -670,6 +678,13 @@ exp(summary(fit_pois_rec)$coefficients[,1:2])
 exp(confint(fit_pois_rec))
 exp(coef(fit_pois_rec_w))
 
+# Get robust Standard errors and CI
+cov_fit_pois_rec_w <- vcovHC(fit_pois_rec_w)
+se_fit_pois_rec_w  <- sqrt(diag(cov_fit_pois_rec_w))
+
+lb_fit_pois_rec_w <- exp(coef(fit_pois_rec_w) - 1.96 * se_fit_pois_rec_w)
+ub_fit_pois_rec_w <- exp(coef(fit_pois_rec_w) + 1.96 * se_fit_pois_rec_w)
+
 warning("the single PA1 and immigrant variables are missing in publish()")
 Publish::publish(fit_pois_rec_w)
 
@@ -686,14 +701,14 @@ df_fit_pois_rec_w <- tibble(index = seq(n_coef_rec),
                             label = NA,
                             HR    = exp(coef(fit_pois_rec_w)),
                             se    = se_coef_rec,
-                            lb_95 = confint_coef_rec[, 1],
-                            ub_95 = confint_coef_rec[, 2])
+                            lb_95 = lb_fit_pois_rec_w,
+                            ub_95 = ub_fit_pois_rec_w)
 
 
 # 07 Plot results ---------------------------------------------------------
 
 
-v_labels <- c("Time since migration ( vs ≤10 years)",
+v_labels <- c("Time since migration (>10 years vs ≤10 years)",
               "Physical Activity (≥ CPAG level vs < CPAG level)",
               "Female vs male",
               "Age (25-64 years vs 18-24 years)",
@@ -712,17 +727,49 @@ df_plot_pois_w <- df_fit_pois_w %>%
   mutate(label2 = v_labels)
 
 
+plt_pois_w_int <- ggplot(data = df_fit_pois_w,
+       mapping = aes(y = index,
+                     x = HR,
+                     xmin = lb_95,
+                     xmax = ub_95)) + 
+  theme_bw(base_size = 16) + 
+  geom_point(shape = 18, size = 3) +
+  geom_errorbarh(height = 0.55) +
+  geom_vline(xintercept = 1, 
+             linetype = "dashed") +
+  scale_x_continuous(breaks = seq(-10, 10, 0.5)) +
+  scale_y_continuous(name = NULL, 
+                     breaks = 1:nrow(df_fit_pois_w), 
+                     labels = df_fit_pois_w$name, 
+                     trans = "reverse") +
+  labs(x = "Hazard Ratio (95% CI)") + 
+  theme(panel.border = element_blank(),
+        panel.background = element_blank(),
+        # panel.grid.major = element_blank(),
+        # panel.grid.minor = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text.y = element_text(colour = "black"),
+        axis.text.x.bottom = element_text(colour = "black"))
+
+# ggsave(plot = plt_pois_w_int,
+#        filename = "figs/plt_pois_w_int.png",
+#        width = 12,
+#        height = 6)
+
+
 plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
        mapping = aes(y = index,
                      x = HR,
                      xmin = lb_95,
                      xmax = ub_95)) + 
   theme_bw(base_size = 16) + 
-  geom_point(shape = 18, size = 2) +
+  geom_point(shape = 18, size = 3) +
   geom_errorbarh(height = 0.55) +
   geom_vline(xintercept = 1, 
              linetype = "dashed") +
-  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_x_continuous(breaks = seq(-10, 10, 0.20)) +
   scale_y_continuous(name = NULL, 
                      breaks = 1:nrow(df_plot_pois_w), 
                      labels = df_plot_pois_w$label2, 
@@ -741,10 +788,10 @@ plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
 plt_plot_pois_w
 
 
-ggsave(plot = plt_plot_pois_w,
-       filename = "figs/plt_plot_pois_w.png",
-       width = 12,
-       height = 6)
+# ggsave(plot = plt_plot_pois_w,
+#        filename = "figs/plt_plot_pois_w.png",
+#        width = 12,
+#        height = 6)
 
 
 
@@ -761,13 +808,48 @@ df_plot_pois_rec_w <- df_fit_pois_rec_w %>%
   mutate(label2 = v_labels)
 
 
+plt_pois_rec_w_int <- ggplot(data = df_fit_pois_rec_w,
+                          mapping = aes(y = index,
+                                        x = HR,
+                                        xmin = lb_95,
+                                        xmax = ub_95)) +
+  theme_bw(base_size = 16) +
+  geom_point(shape = 18, size = 3) +
+  geom_errorbarh(height = 0.55) +
+  geom_vline(xintercept = 1,
+             linetype = "dashed") +
+  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_y_continuous(name = NULL,
+                     breaks = 1:nrow(df_fit_pois_rec_w),
+                     labels = df_fit_pois_rec_w$name,
+                     trans = "reverse") +
+  labs(x = "Hazard Ratio (95% CI)") +
+  theme(panel.border = element_blank(),
+        panel.background = element_blank(),
+        # panel.grid.major = element_blank(),
+        # panel.grid.minor = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text.y = element_text(colour = "black"),
+        axis.text.x.bottom = element_text(colour = "black"))
+
+
+# ggsave(plot = plt_pois_rec_w_int,
+#        filename = "figs/plt_pois_rec_w_int.png",
+#        width = 12,
+#        height = 6)
+
+
+
+
 plt_plot_pois_rec_w <- ggplot(data = df_plot_pois_rec_w,
                           mapping = aes(y = index,
                                         x = HR,
                                         xmin = lb_95,
                                         xmax = ub_95)) + 
   theme_bw(base_size = 16) + 
-  geom_point(shape = 18, size = 2) +
+  geom_point(shape = 18, size = 3) +
   geom_errorbarh(height = 0.55) +
   geom_vline(xintercept = 1, 
              linetype = "dashed") +
