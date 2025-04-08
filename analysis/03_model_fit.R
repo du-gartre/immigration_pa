@@ -38,7 +38,7 @@ df_cchs_1718_prep <- readRDS(file = "data/df_cchs_1718_prepared.rds")
 
 
 # include NAs as a category?
-include_NA <- FALSE
+include_NA <- TRUE
 
 
 if (include_NA == TRUE) {
