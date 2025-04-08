@@ -283,7 +283,6 @@ df_t2_w <- df_cchs_1718_prep %>%
 # 04 Stratified analysis --------------------------------------------------
 
 
-
 ## 04.01 unweighted logistic -----------------------------------------------
 
 # General risk of developing Mood or anxiety disorder
@@ -351,7 +350,7 @@ model_1_w_pois <- glm(formula = disorder ~ 1,
                       weights = WTS_M)
 
 exp(coef(model_1_w_pois))
-round(exp(confint(model_1_w_pois)), 2)
+round(exp(confint(model_1_w_pois)), 5)
 
 
 # Crude risk of developing Mood or anxiety disorder by Physical activity
