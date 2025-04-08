@@ -27,6 +27,8 @@ library(interactionR)
 library(weights)
 library(Publish)
 library(sandwich)
+library(patchwork)
+
 
 # 02 Load data ------------------------------------------------------------
 
@@ -38,7 +40,7 @@ df_cchs_1718_prep <- readRDS(file = "data/df_cchs_1718_prepared.rds")
 
 
 # include NAs as a category?
-include_NA <- TRUE
+include_NA <- FALSE
 
 
 if (include_NA == TRUE) {
@@ -626,6 +628,7 @@ df_fit_pois_w <- tibble(index = seq(n_coef),
                         ub_95 = ub_fit_pois_w)
 
 
+round(df_fit_pois_w[, 3:6], 2)
 
 
 ## 06.02 Alternative exposure - PA_rec -------------------------------------
@@ -707,6 +710,8 @@ confint_coef_rec <- exp(confint(fit_pois_rec_w))
 se_coef_rec      <- summary(fit_pois_rec_w)$coefficients[,2]
 
 
+
+
 # Save data for plotting
 df_fit_pois_rec_w <- tibble(index = seq(n_coef_rec),
                             name  = names_coef_rec,
@@ -715,6 +720,8 @@ df_fit_pois_rec_w <- tibble(index = seq(n_coef_rec),
                             se    = se_coef_rec,
                             lb_95 = lb_fit_pois_rec_w,
                             ub_95 = ub_fit_pois_rec_w)
+
+round(df_fit_pois_rec_w[, 3:6], 2)
 
 
 # 07 Plot results ---------------------------------------------------------
@@ -729,6 +736,8 @@ v_labels <- c("Time since migration (>10 years vs ≤10 years)",
               "Household income (60,000-80,000 vs <60,000)",
               "Household income (≥80,000 vs <60,000)",
               "Time since migration >10 years & PA ≥ CPAG level")
+
+v_xlim <- c(0.25, 3.75)
 
 # 07.03 Weighted poisson --------------------------------------------------
 
@@ -781,7 +790,7 @@ plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
   geom_errorbarh(height = 0.55) +
   geom_vline(xintercept = 1, 
              linetype = "dashed") +
-  scale_x_continuous(breaks = seq(-10, 10, 0.20)) +
+  scale_x_continuous(breaks = seq(-10, 10, 0.5)) +
   scale_y_continuous(name = NULL, 
                      breaks = 1:nrow(df_plot_pois_w), 
                      labels = df_plot_pois_w$label2, 
@@ -795,7 +804,8 @@ plt_plot_pois_w <- ggplot(data = df_plot_pois_w,
         panel.grid.minor.x = element_blank(),
         axis.line = element_line(colour = "black"),
         axis.text.y = element_text(colour = "black"),
-        axis.text.x.bottom = element_text(colour = "black"))
+        axis.text.x.bottom = element_text(colour = "black")) + 
+  coord_cartesian(xlim = v_xlim)
 
 plt_plot_pois_w
 
@@ -830,7 +840,7 @@ plt_pois_rec_w_int <- ggplot(data = df_fit_pois_rec_w,
   geom_errorbarh(height = 0.55) +
   geom_vline(xintercept = 1,
              linetype = "dashed") +
-  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_x_continuous(breaks = seq(-10, 10, 0.50)) +
   scale_y_continuous(name = NULL,
                      breaks = 1:nrow(df_fit_pois_rec_w),
                      labels = df_fit_pois_rec_w$name,
@@ -844,7 +854,8 @@ plt_pois_rec_w_int <- ggplot(data = df_fit_pois_rec_w,
         panel.grid.minor.x = element_blank(),
         axis.line = element_line(colour = "black"),
         axis.text.y = element_text(colour = "black"),
-        axis.text.x.bottom = element_text(colour = "black"))
+        axis.text.x.bottom = element_text(colour = "black")) +
+  coord_cartesian(xlim = v_xlim)
 
 
 # ggsave(plot = plt_pois_rec_w_int,
@@ -865,7 +876,7 @@ plt_plot_pois_rec_w <- ggplot(data = df_plot_pois_rec_w,
   geom_errorbarh(height = 0.55) +
   geom_vline(xintercept = 1, 
              linetype = "dashed") +
-  scale_x_continuous(breaks = seq(-10, 10, 0.25)) +
+  scale_x_continuous(breaks = seq(-10, 10, 0.50)) +
   scale_y_continuous(name = NULL, 
                      breaks = 1:nrow(df_plot_pois_w), 
                      labels = df_plot_pois_w$label2, 
@@ -879,7 +890,8 @@ plt_plot_pois_rec_w <- ggplot(data = df_plot_pois_rec_w,
         panel.grid.minor.x = element_blank(),
         axis.line = element_line(colour = "black"),
         axis.text.y = element_text(colour = "black"),
-        axis.text.x.bottom = element_text(colour = "black"))
+        axis.text.x.bottom = element_text(colour = "black")) +
+  coord_cartesian(xlim = v_xlim)
 
 plt_plot_pois_rec_w
 
@@ -890,3 +902,15 @@ ggsave(plot = plt_plot_pois_rec_w,
        height = 6)
 
 
+
+# patchworks plot ---------------------------------------------------------
+
+
+plt_patch <- (plt_plot_pois_w / plt_plot_pois_rec_w) + 
+  patchwork::plot_annotation(tag_levels = '1', 
+                             tag_prefix = "Model ")
+
+ggsave(plot = plt_patch,
+       filename = "figs/plt_patch.png",
+       width = 12,
+       height = 12)
