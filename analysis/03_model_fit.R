@@ -545,6 +545,7 @@ Publish::publish(fit_logistic)
 # 
 # summary(fit_logistic_w)
 # questionr::odds.ratio(fit_logistic_w)
+publish(fit_logistic_w)
 
 
 ### 06.01.02 Log-binomial ------------------------------------------------------
@@ -643,12 +644,23 @@ publish(fit_logistic)
 
 ### 06.01.02 Log-binomial ------------------------------------------------------
 
+library(logbin)
+
 fit_logbinom <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
                     data = df_cchs_1718_prep,
                     family = binomial(link = "log"))
 
 summary(fit_logbinom)
 publish(fit_logbinom)
+
+
+# fit_logbinom_w <- glm(formula = disorder ~ immigrant_10y*PA + sex_cat + age_cat + sense_belong + household_inc_cat,
+#                     data = df_cchs_1718_prep,
+#                     family = quasibinomial(link = "log"),
+#                     weights = WTS_M)
+# 
+# summary(fit_logbinom)
+# publish(fit_logbinom)
 
 
 
